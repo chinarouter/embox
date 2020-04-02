@@ -33,14 +33,13 @@ static int ip6_xmit(struct sk_buff *skb) {
 
 	/* FIXME */
 	assert(skb->dev != NULL);
+	hdr_info.src_hw = skb->dev->dev_addr;
 	if (skb->dev->flags & IFF_LOOPBACK) {
 		hdr_info.dst_p = NULL;
-		hdr_info.src_hw = NULL;
 	}
 	else {
 		hdr_info.dst_p = &skb->nh.ip6h->daddr;
 		hdr_info.p_len = sizeof(skb->nh.ip6h->daddr);
-		hdr_info.src_hw = skb->dev->dev_addr;
 	}
 
 	return net_tx(skb, &hdr_info);

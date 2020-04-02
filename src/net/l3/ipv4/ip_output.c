@@ -57,10 +57,10 @@ static int ip_xmit(struct sk_buff *skb) {
 
 	hdr_info.type = ETH_P_IP;
 	hdr_info.dst_hw = NULL;
+	hdr_info.src_hw = skb->dev->dev_addr;
 
 	/* it's loopback/local or broadcast address? */
 	if (ip_is_local(skb->nh.iph->daddr, IP_LOCAL_BROADCAST)) {
-		hdr_info.src_hw = NULL;
 		hdr_info.dst_p = NULL;
 	}
 	else {
@@ -75,7 +75,6 @@ static int ip_xmit(struct sk_buff *skb) {
 
 		hdr_info.dst_p = &daddr;
 		hdr_info.p_len = sizeof daddr;
-		hdr_info.src_hw = skb->dev->dev_addr;
 	}
 
 	return net_tx(skb, &hdr_info);
