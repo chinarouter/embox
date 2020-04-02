@@ -68,37 +68,33 @@ int net_tx(struct sk_buff *skb, struct net_header_info *hdr_info) {
 	dev = skb->dev;
 	assert(dev != NULL);
 
-	if (hdr_info->dst_p == NULL) {
+	if (hdr_info->dst_p == NULL || (dev->flags & IFF_NOARP)) {
 		/* it's local we don't need resolve hardware address */
 		hdr_info->dst_hw = &dev->broadcast[0];
-		ret = 0;
 	} else {
 		ret = neighbour_get_haddr(hdr_info->type,
 				hdr_info->dst_p, dev, dev->type,
 				sizeof(dst_haddr), &dst_haddr[0]);
-		if (ret == 0) {
-			hdr_info->dst_hw = &dst_haddr[0];
-		} else if (ret == -ENOENT && (dev->flags & IFF_NOARP)) {
-			hdr_info->dst_hw = NULL;
-			ret = 0;
+		if (ret != 0) {
+			ret = neighbour_send_after_resolve(hdr_info->type,
+					hdr_info->dst_p, hdr_info->p_len, dev, skb);
+			if (ret != 0) {
+					log_debug("neighbour_send_after_resolve = %d", ret);
+			}
+			return ret;
 		}
+		hdr_info->dst_hw = &dst_haddr[0];
 	}
 
-	if (ret == 0) {
-		/* try to build */
-		assert(dev->ops != NULL);
-		assert(dev->ops->build_hdr != NULL);
-		ret = dev->ops->build_hdr(skb, hdr_info);
-		if (ret == 0) {
-			net_tx_direct(skb);
-			return 0;
-		}
-	}
-
-	ret = neighbour_send_after_resolve(hdr_info->type,
-			hdr_info->dst_p, hdr_info->p_len, dev, skb);
+	/* try to build */
+	assert(dev->ops != NULL);
+	assert(dev->ops->build_hdr != NULL);
+	ret = dev->ops->build_hdr(skb, hdr_info);
 	if (ret != 0) {
-			log_debug("neighbour_send_after_resolve = %d", ret);
+		return ret;
 	}
-	return ret;
+
+	net_tx_direct(skb);
+
+	return 0;
 }
